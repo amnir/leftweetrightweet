@@ -98,65 +98,7 @@ def build_dict():
 
         return corpora.Dictionary([word for word in all_words])
 
-
-def build_word2vec_nn():
-    data = pd.read_csv('tweets.csv')
-    X = data.text
-    y = data.drop('text', axis=1)
-    X_train, X_test, y_train, orig_y_test = train_test_split(X, y, test_size=0.2)
-
-    y_train = np_utils.to_categorical(y_train)
-    y_test = np_utils.to_categorical(orig_y_test)
-    before = datetime.now()
-    w2v = word2vec.KeyedVectors.load_word2vec_format('wiki.he.vec', limit=10000)
-    print("total loading time: {}".format(datetime.now() - before))
-
-    train_tweets = []
-    for train in X_train:
-        tweet = clean_tweet(train)
-        words = [token for grp, token, token_num, (start_index, end_index) in ht.tokenize(tweet)]
-        vector = [w2v[word] for word in words if word in w2v]
-        if len(vector) == 0:
-            vector = [np.zeros(300)]
-        train_tweets.append(np.mean(vector, axis=0))
-
-    # train_tweets = sequence.pad_sequences(np.array(train_tweets), maxlen=150)
-
-    test_tweets = []
-    for test in X_test:
-        tweet = clean_tweet(test)
-        words = [token for grp, token, token_num, (start_index, end_index) in ht.tokenize(tweet)]
-        vector = [w2v[word] for word in words if word in w2v]
-        if len(vector) == 0:
-            vector = [np.zeros(300)]
-        test_tweets.append(np.mean(vector, axis=0))
-
-    # LSTM
-    model = Sequential()
-    model.add(Embedding(len(w2v.wv.vectors) + 1, 256, dropout=0.2))
-    model.add(LSTM(100, dropout_W=0.2, dropout_U=0.2))
-    # model.add(SimpleRNN(256, dropout_W=0.2, dropout_U=0.2))
-    model.add(Dense(2))
-    model.add(Activation('softmax'))
-
-    # model.load_weights("lstm_model.hdf5")
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    checkpointer = callbacks.ModelCheckpoint(filepath="checkpoint-{epoch:02d}.hdf5", verbose=1,
-                                             save_best_only=True, monitor='loss')
-    csv_logger = CSVLogger('training_set_iranalysis1.csv', separator=',', append=False)
-
-    print("Training start")
-    model.fit(np.array(train_tweets), np.array(y_train), epochs=3, batch_size=256, validation_data=(np.array(test_tweets), np.array(y_test)),
-               verbose=1, callbacks=[checkpointer, csv_logger])
-    model.save("lstm_w2v_model.hdf5")
-
-    test_pred = model.predict_classes(test_tweets)
-    accuracy = accuracy_score(orig_y_test, test_pred)
-    print("real tweets acc" + str(accuracy))
-
-
 if __name__ == '__main__':
-    build_word2vec_nn()
     # auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     # auth.set_access_token(access_key, access_secret)
     # get_all_tweets2("zehavagalon", auth, 0)
@@ -199,7 +141,6 @@ if __name__ == '__main__':
     model = Sequential()
     model.add(Embedding(len(dict.keys()), 256, dropout=0.2))
     model.add(LSTM(100, dropout_W=0.2, dropout_U=0.2))
-    # model.add(SimpleRNN(256, dropout_W=0.2, dropout_U=0.2))
     model.add(Dense(2))
     model.add(Activation('softmax'))
 
@@ -209,34 +150,10 @@ if __name__ == '__main__':
                                              save_best_only=True, monitor='loss')
     csv_logger = CSVLogger('training_set_iranalysis1.csv', separator=',', append=False)
 
-    # model.fit(train_tweets, y_train, epochs=3, batch_size=256, validation_data=(test_tweets, y_test),
-    #           verbose=1, callbacks=[checkpointer, csv_logger])
-    # model.save("lstm_model.hdf5")
+    model.fit(train_tweets, y_train, epochs=3, batch_size=256, validation_data=(test_tweets, y_test),
+              verbose=1, callbacks=[checkpointer, csv_logger])
+    model.save("lstm_model.hdf5")
 
     test_pred = model.predict_classes(test_tweets)
     accuracy = accuracy_score(orig_y_test, test_pred)
     print("real tweets acc" + str(accuracy))
-
-    # our_tweets = ["מיכל רוזין המרשעת, התקבלת לרשימה המשותפת.", "אם לא נתחיל להחזיר שטחים, אין סיכוי להסכם שלום"]
-    our_tweets = ['בלי בתי משפט הטייקונים יוכלו לחגוג על חשבוננו בלי מעצורים! כשההון-שלטון מוכן לחצות כל קוו אדום בבניה בחופים, בהרס הסביבה, בפגיעה בבריאות - דרושים לנו בתי משפט עצמאיים וחזקים. החקיקה שהימין מקדם להחלשת בתי המשפט - תפגע ביכולתינו להאבק על העדפת החיים שלנו על הרווחים של בעלי ההון']
-    our_tweets_vects = []
-    for test in our_tweets:
-        tweet = clean_tweet(test)
-        words = [token for grp, token, token_num, (start_index, end_index) in ht.tokenize(tweet)]
-        vector = [dict.token2id[word] if word in dict.values() else dict.token2id[UNK] for word in words]
-        our_tweets_vects.append(vector)
-
-    our_tweets_vects = sequence.pad_sequences(np.array(our_tweets_vects), maxlen=150)
-    our = model.predict_classes(our_tweets_vects)
-    # make a submission
-    accuracy = accuracy_score([0], our)
-    print("our tweets acc" + str(accuracy))
-#
-#     # with open('clean_tweets.csv', 'r', encoding='utf-8') as tweets:
-#     #     tweets = csv.reader(tweets)
-#     #     for tweet in tweets:
-#     #         words = [token for grp, token, token_num, (start_index, end_index) in ht.tokenize(tweet[0])]
-#     #         vector = [dict.token2id[word] for word in words]
-#     #         print(*vector, sep=",")
-# # main()
-# # clean_tweets()
