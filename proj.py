@@ -28,12 +28,6 @@ access_secret = os.environ['access_secret']
 
 UNK = "UNK"
 
-def main():
-    print("Maor")
-    # authorize twitter, initialize tweepy
-    download_tweets()
-
-
 def download_tweets():
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_key, access_secret)
@@ -52,8 +46,6 @@ def download_tweets():
     [get_all_tweets(screen_name, auth, 0) for screen_name in left_wing]
     [get_all_tweets(screen_name, auth, 1) for screen_name in right_wing]
 
-
-#
 
 def clean_tweet(tweet):
     # remove old style retweet text "RT"
@@ -99,19 +91,8 @@ def build_dict():
         return corpora.Dictionary([word for word in all_words])
 
 if __name__ == '__main__':
-    # auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-    # auth.set_access_token(access_key, access_secret)
-    # get_all_tweets2("zehavagalon", auth, 0)
-    #
-
-
     dict = build_dict()
-    # print(len(dict))
-    # print(dict.token2id["במדינה"])
-    # print(dict[3075])
-
     data = pd.read_csv('tweets.csv')
-    print(data.head())
     X = data.text
     y = data.drop('text', axis=1)
     X_train, X_test, y_train, orig_y_test = train_test_split(X, y, test_size=0.2)
